@@ -17,7 +17,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ForkJoinPool;
 
-import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
 @Slf4j

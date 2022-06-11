@@ -7,6 +7,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.BitSet;
 import java.util.Date;
 import java.util.concurrent.RecursiveTask;
 import java.util.regex.Pattern;
@@ -19,16 +20,14 @@ public class IpReader extends RecursiveTask<Long> {
     private static final long THRESHOLD = 100_000;
     private static final String DELIMITER = System.lineSeparator();
     private static final int DELIMITER_LENGTH = DELIMITER.length();
-    private static final int ARRAY_LEN_DIVIDER = 4;
-    private static final int ARRAY_LEN = Integer.MAX_VALUE / ARRAY_LEN_DIVIDER;
-    private static final int ARRAYS_COUNT = 8;
-    private static final byte[][] ipCollection;
+    private static final int BITSET_LEN = Integer.MAX_VALUE;
+    private static final BitSet[] ipCollection;
     private static final long SEEK_BUFFER_SIZE = ("255.255.255.255" + DELIMITER + "255.255.255.255").getBytes().length;
 
     static {
         System.out.printf(IPService.appProps.getProperty("log.memory_allocation_start"), new Date());
         var startTime = Instant.now();
-        ipCollection = new byte[ARRAY_LEN][ARRAYS_COUNT];
+        ipCollection = new BitSet[]{new BitSet(BITSET_LEN), new BitSet(BITSET_LEN)};
         var endTime = Instant.now();
         System.out.printf(IPService.appProps.getProperty("log.memory_allocation_finish"), new Date(),
                 (endTime.getEpochSecond() - startTime.getEpochSecond())
@@ -65,11 +64,8 @@ public class IpReader extends RecursiveTask<Long> {
         System.out.printf(IPService.appProps.getProperty("log.counting_start"), new Date());
         var startTime = Instant.now();
         long sum = 0L;
-        for (int i = 0; i < ARRAY_LEN; i++) {
-            for (int j = 0; j < ARRAYS_COUNT; j++) {
-                sum += ipCollection[i][j];
-            }
-        }
+        sum += ipCollection[0].cardinality();
+        sum += ipCollection[1].cardinality();
         var endTime = Instant.now();
         System.out.printf(IPService.appProps.getProperty("log.counting_finish"), new Date(),
                 (endTime.getEpochSecond() - startTime.getEpochSecond()));
@@ -130,9 +126,9 @@ public class IpReader extends RecursiveTask<Long> {
     private static void setIpToArray(String[] list) {
         for (String address : list) {
             long ip = parseIpShift(address);
-            int arrayNumber = (int) (ip / ARRAY_LEN);
-            int arrayPosition = (int) (ip % ARRAY_LEN);
-            ipCollection[arrayPosition][arrayNumber] = 1;
+            int arrayNumber = (int) (ip / BITSET_LEN);
+            int arrayPosition = (int) (ip % BITSET_LEN);
+            ipCollection[arrayNumber].set(arrayPosition);
         }
     }
 }

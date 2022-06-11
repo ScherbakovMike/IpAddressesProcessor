@@ -37,7 +37,7 @@ class IPService {
     }
 
     @SneakyThrows
-    public static void parseFile(String path) {
+    public static long parseFile(String path) {
         var sourcePath = Path.of(path);
         var startTime = Instant.now();
         try {
@@ -45,12 +45,16 @@ class IPService {
             System.out.printf(appProps.getProperty("log.reading_start"), new Date());
             new ForkJoinPool().invoke(ipReader);
             System.out.printf(appProps.getProperty("log.reading_finish"), new Date());
-            System.out.printf(appProps.getProperty("log.result"), IpReader.countOfUnique());
+            var countIPs = IpReader.countOfUnique();
+            System.out.printf(appProps.getProperty("log.result"), countIPs);
             var endTime = Instant.now();
             System.out.printf(appProps.getProperty("log.whole_time"), new Date(),
                     (endTime.getEpochSecond() - startTime.getEpochSecond()));
+
+            return countIPs;
         } catch (Exception e) {
             log.error(IPService.class.getSimpleName(), e);
+            throw new RuntimeException(e);
         }
     }
 

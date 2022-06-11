@@ -6,7 +6,6 @@ This application has been implemented for two goals:
 1. Create text files with random IP's list.
 2. Parsing text files with random IP's to count unique IP's.
 
-!! Before using the application,  please, set JVM params: -Xms16g -Xmx16g
 
 ### Using
 

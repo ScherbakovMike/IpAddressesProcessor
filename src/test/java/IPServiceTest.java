@@ -1,7 +1,6 @@
-package ru.mikescherbakov.ipcounter;
-
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
+import ru.mikescherbakov.ipcounter.IPService;
 
 import java.nio.file.Files;
 

@@ -21,7 +21,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 
 @Slf4j
 @UtilityClass
-class IPService {
+public class IPService {
 
     private static final String DELIMITER = System.lineSeparator();
     private static final Random random = new Random();

@@ -1,11 +1,14 @@
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import lombok.SneakyThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
+import org.springframework.stereotype.Service;
 import ru.mikescherbakov.ipcounter.ApplicationProperties;
 import ru.mikescherbakov.ipcounter.IPService;
 
@@ -60,5 +63,22 @@ class IPServiceTest {
         var testFilePath = applicationProperties.getTestFilePath();
         ipService.generateTestFile(testFilePath.toString(), 1000L);
         assertTrue(testFilePath.toFile().exists());
+    }
+
+    @Test
+    @SneakyThrows
+    void parseFileWithEqualIP() {
+        var tempFile = Files.createTempFile("test", "test");
+
+        var list = new ArrayList<String>();
+        list.add("0.0.0.0");
+        list.add("1.0.0.0");
+        list.add("1.0.0.0");
+        list.add("0.0.0.0");
+        list.add("0.255.0.0");
+        Files.write(tempFile, list);
+        assertEquals(ipService.parseFile(tempFile.toString()),
+            list.stream().distinct().count());
+        Files.delete(tempFile);
     }
 }

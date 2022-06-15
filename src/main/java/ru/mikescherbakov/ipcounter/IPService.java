@@ -11,11 +11,7 @@ import java.time.Instant;
 import java.util.BitSet;
 import java.util.Date;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
-import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -24,20 +20,20 @@ import org.springframework.stereotype.Service;
 public class IPService {
     private static final String DELIMITER = "\n";
     private static final int BITSET_LEN = Integer.MAX_VALUE;
-    private static final Random random = new Random();
 
+    private static final Random random = new Random();
     private final ApplicationProperties applicationProperties;
 
     public IPService (ApplicationProperties applicationProperties) {
         this.applicationProperties = applicationProperties;
     }
 
-    public long countOfUnique (BitSet[] ipCollection) {
+    public long countOfUnique (BitSet[] ipBitSet) {
         log.info(String.format(applicationProperties.getAppProps().getProperty("log.counting_start"), new Date()));
         var startTime = Instant.now();
         long sum = 0L;
-        sum += ipCollection[0].cardinality();
-        sum += ipCollection[1].cardinality();
+        sum += ipBitSet[0].cardinality();
+        sum += ipBitSet[1].cardinality();
         var endTime = Instant.now();
         var executionTime = endTime.getEpochSecond() - startTime.getEpochSecond();
         log.info(String.format(applicationProperties.getAppProps().getProperty("log.counting_finish"),
@@ -51,16 +47,13 @@ public class IPService {
         try {
             var startTime = Instant.now();
             var sourcePath = Path.of(path);
+            BitSet[] ipBitSet = new BitSet[]{new BitSet(BITSET_LEN), new BitSet(BITSET_LEN)};
 
-            var ipSetsQueue = new ConcurrentLinkedQueue<String[]>();
-            var ipReader = new IpReader(sourcePath, 0, Files.size(sourcePath) - 1, ipSetsQueue);
+            var ipReader = new IpReader(sourcePath, 0, Files.size(sourcePath) - 1, ipBitSet);
             log.info(String.format(applicationProperties.getAppProps().getProperty("log.reading_start"), new Date()));
-            CompletableFuture<Long> parsingTask = CompletableFuture.supplyAsync(() -> new ForkJoinPool().invoke(ipReader));
-            CompletableFuture<Long> countingTask = parsingTask.thenApplyAsync(parsed -> {
-                var ipBitSet = fillBitSet(ipSetsQueue, parsingTask);
-                return countOfUnique(ipBitSet);
-            });
-            var countIPs = countingTask.get();
+
+            new ForkJoinPool().invoke(ipReader);
+            var countIPs = countOfUnique(ipBitSet);
 
             log.info(String.format(applicationProperties.getAppProps().getProperty("log.reading_finish"), new Date()));
             var endTime = Instant.now();
@@ -71,7 +64,7 @@ public class IPService {
             ));
 
             return countIPs;
-        } catch (IOException | ExecutionException | InterruptedException e) {
+        } catch (IOException e) {
             log.error(IPService.class.getSimpleName(), e);
             throw new RuntimeException(e);
         }
@@ -98,43 +91,6 @@ public class IPService {
             count,
             executionTime
         ));
-    }
-
-    private BitSet[] fillBitSet (ConcurrentLinkedQueue<String[]> ipSetsQueue, CompletableFuture<Long> parsingTask) {
-        BitSet[] ipCollection = new BitSet[]{new BitSet(BITSET_LEN), new BitSet(BITSET_LEN)};
-
-        while (!ipSetsQueue.isEmpty() || !parsingTask.isDone()) {
-            var ipSet = ipSetsQueue.poll();
-            if (ipSet != null) {
-                setIpToArray(ipSet, ipCollection);
-                ipSet = null;
-            }
-        }
-        return ipCollection;
-    }
-
-    private void setIpToArray (String[] list, BitSet[] ipCollection) {
-        for (String address : list) {
-            if (address.isBlank()) {
-                continue;
-            }
-            long ip = parseIpShift(address);
-            int arrayNumber = (int) (ip / BITSET_LEN);
-            int arrayPosition = (int) (ip % BITSET_LEN);
-            ipCollection[arrayNumber].set(arrayPosition);
-        }
-    }
-
-    private long parseIpShift (String address) {
-        long result = 0L;
-        // iterate over each octet
-        for (String part : address.split(Pattern.quote("."))) {
-            // shift the previously parsed bits over by 1 byte
-            result = result << 8;
-            // set the low order bits to the current octet
-            result |= Integer.parseInt(part);
-        }
-        return result;
     }
 
     private String getRandomIp () {

@@ -1,13 +1,14 @@
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import lombok.SneakyThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import ru.mikescherbakov.ipcounter.ApplicationProperties;
 import ru.mikescherbakov.ipcounter.IPService;
-
-import java.nio.file.Files;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IPServiceTest {
 
@@ -19,7 +20,7 @@ class IPServiceTest {
 
     @Test
     @SneakyThrows
-    void parseFile() {
+    void parseFile () {
         var testFilePath = applicationProperties.getTestFilePath();
         var linesCount = 1000L;
         ipService.generateTestFile(testFilePath.toString(), linesCount);
@@ -28,7 +29,7 @@ class IPServiceTest {
 
     @Test
     @SneakyThrows
-    void generateTestFile_1000() {
+    void generateTestFile_1000lines () {
         var tempFile = Files.createTempFile("test", "test");
 
         var linesCount = 1000L;
@@ -39,7 +40,7 @@ class IPServiceTest {
 
     @Test
     @SneakyThrows
-    void generateTestFile_0() {
+    void generateTestFile_0lines () {
         var tempFile = Files.createTempFile("test", "test");
         var linesCount = 0L;
         ipService.generateTestFile(tempFile.toString(), linesCount);
@@ -49,7 +50,14 @@ class IPServiceTest {
 
     @Test
     @SneakyThrows
-    void getTestFilePath() {
+    void generateTestFile_wrongPath () {
+        var tempFile = Path.of("test");
+        assertThrows(RuntimeException.class, () -> ipService.parseFile(tempFile.toString()));
+    }
+
+    @Test
+    @SneakyThrows
+    void getTestFilePath () {
         var testFilePath = applicationProperties.getTestFilePath();
         ipService.generateTestFile(testFilePath.toString(), 1000L);
         assertTrue(testFilePath.toFile().exists());

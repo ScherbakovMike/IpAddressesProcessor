@@ -30,7 +30,7 @@ __parse__
 
 Customize _parse_ with options:
 
-_generate -s path_to_file_
+_parse -s path_to_file_
 
 Also use double backslash in the path.
 

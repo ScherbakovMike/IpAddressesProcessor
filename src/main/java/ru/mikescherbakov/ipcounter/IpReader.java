@@ -1,16 +1,13 @@
 package ru.mikescherbakov.ipcounter;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.BitSet;
 import java.util.Date;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RecursiveTask;
-import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class IpReader extends RecursiveTask<Long> {
@@ -18,41 +15,42 @@ public class IpReader extends RecursiveTask<Long> {
     private final long startPosition;
     private final long endPosition;
     private static final long THRESHOLD = 100_000;
-    private static final String DELIMITER = System.lineSeparator();
+    private static final String DELIMITER = "\n";
     private static final int DELIMITER_LENGTH = DELIMITER.length();
-    private static final int BITSET_LEN = Integer.MAX_VALUE;
-    private static final BitSet[] ipCollection;
     private static final long SEEK_BUFFER_SIZE = ("255.255.255.255" + DELIMITER + "255.255.255.255").getBytes().length;
 
+    private final ConcurrentLinkedQueue<String[]> ipSetsQueue;
+
     static {
-        System.out.printf(IPService.appProps.getProperty("log.memory_allocation_start"), new Date());
+        log.info(String.format(IPService.appProps.getProperty("log.memory_allocation_start"), new Date()));
         var startTime = Instant.now();
-        ipCollection = new BitSet[]{new BitSet(BITSET_LEN), new BitSet(BITSET_LEN)};
+
         var endTime = Instant.now();
-        System.out.printf(IPService.appProps.getProperty("log.memory_allocation_finish"), new Date(),
+        log.info(String.format(IPService.appProps.getProperty("log.memory_allocation_finish"), new Date(),
                 (endTime.getEpochSecond() - startTime.getEpochSecond())
-        );
+        ));
     }
 
-    public IpReader(Path file, long startPosition, long endPosition) {
+    public IpReader(Path file, long startPosition, long endPosition, ConcurrentLinkedQueue<String[]> ipSetsQueue) {
         this.file = file;
         this.startPosition = startPosition;
         this.endPosition = endPosition;
+        this.ipSetsQueue = ipSetsQueue;
     }
 
     @Override
     protected Long compute() {
         long size = endPosition - startPosition + 1;
         if (size < THRESHOLD) {
-            return extractIPNumbers();
+            return (long)extractIPNumbers().length;
         }
 
         long delimiterPosition = findDelimiterPosition(file, startPosition, endPosition);
         if (delimiterPosition < 0) {
-            return extractIPNumbers();
+            return (long)extractIPNumbers().length;
         } else {
-            var leftTask = new IpReader(file, startPosition, delimiterPosition);
-            var rightTask = new IpReader(file, delimiterPosition + DELIMITER_LENGTH, endPosition);
+            var leftTask = new IpReader(file, startPosition, delimiterPosition, ipSetsQueue);
+            var rightTask = new IpReader(file, delimiterPosition + DELIMITER_LENGTH, endPosition, ipSetsQueue);
             leftTask.fork();
             var rightResult = rightTask.compute();
             var leftResult = leftTask.join();
@@ -60,31 +58,21 @@ public class IpReader extends RecursiveTask<Long> {
         }
     }
 
-    public static long countOfUnique() {
-        System.out.printf(IPService.appProps.getProperty("log.counting_start"), new Date());
-        var startTime = Instant.now();
-        long sum = 0L;
-        sum += ipCollection[0].cardinality();
-        sum += ipCollection[1].cardinality();
-        var endTime = Instant.now();
-        System.out.printf(IPService.appProps.getProperty("log.counting_finish"), new Date(),
-                (endTime.getEpochSecond() - startTime.getEpochSecond()));
-        return sum;
-    }
 
-    private long extractIPNumbers() {
+
+    private String[] extractIPNumbers() {
         try {
             var list = new String(readBytes(file, startPosition, endPosition).array())
                     .trim().split(DELIMITER);
-            setIpToArray(list);
-            return list.length;
+            ipSetsQueue.add(list);
+            //setIpToArray(list);
+            return list;
         } catch (Exception e) {
             log.error(this.getClass().getSimpleName(), e);
-            return 0L;
+            return new String[0];
         }
     }
 
-    @SneakyThrows
     private ByteBuffer readBytes(Path path, long start, long end) {
         long size = end - start + 1;
 
@@ -114,21 +102,6 @@ public class IpReader extends RecursiveTask<Long> {
         return delimiterPosition;
     }
 
-    private static long parseIpShift(String address) {
-        long result = 0L;
-        for (String part : address.split(Pattern.quote("."))) {
-            result = result << 8;
-            result |= Integer.parseInt(part);
-        }
-        return result;
-    }
 
-    private static void setIpToArray(String[] list) {
-        for (String address : list) {
-            long ip = parseIpShift(address);
-            int arrayNumber = (int) (ip / BITSET_LEN);
-            int arrayPosition = (int) (ip % BITSET_LEN);
-            ipCollection[arrayNumber].set(arrayPosition);
-        }
-    }
+
 }

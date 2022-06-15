@@ -70,7 +70,6 @@ public class IPService {
                 executionTime
             ));
 
-            System.out.format(applicationProperties.getAppProps().getProperty("log.result"), countIPs);
             return countIPs;
         } catch (IOException | ExecutionException | InterruptedException e) {
             log.error(IPService.class.getSimpleName(), e);
@@ -108,6 +107,7 @@ public class IPService {
             var ipSet = ipSetsQueue.poll();
             if (ipSet != null) {
                 setIpToArray(ipSet, ipCollection);
+                ipSet = null;
             }
         }
         return ipCollection;

@@ -3,6 +3,7 @@ package ru.mikescherbakov.ipcounter;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RecursiveTask;
 import lombok.extern.slf4j.Slf4j;
@@ -18,9 +19,9 @@ public class IpReader extends RecursiveTask<Long> {
     private static final String MAX_IP = "255.255.255.255";
     private static final long SEEK_BUFFER_SIZE = (MAX_IP + DELIMITER + MAX_IP).getBytes().length;
 
-    private final ConcurrentLinkedQueue<String[]> ipSetsQueue;
+    private final Queue<String[]> ipSetsQueue;
 
-    public IpReader (Path file, long startPosition, long endPosition, ConcurrentLinkedQueue<String[]> ipSetsQueue) {
+    public IpReader (Path file, long startPosition, long endPosition, Queue<String[]> ipSetsQueue) {
         this.file = file;
         this.startPosition = startPosition;
         this.endPosition = endPosition;
@@ -68,7 +69,7 @@ public class IpReader extends RecursiveTask<Long> {
             return buffer;
         } catch (Exception e) {
             log.error(getClass().getSimpleName(), e);
-            return ByteBuffer.allocate(0);
+            throw new RuntimeException(e);
         }
     }
 

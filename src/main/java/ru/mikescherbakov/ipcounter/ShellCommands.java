@@ -1,7 +1,6 @@
 package ru.mikescherbakov.ipcounter;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import org.springframework.shell.standard.ShellOption;
@@ -32,6 +31,8 @@ public class ShellCommands {
         if (pathToFile.equals("testFile.txt")) {
             pathToFile = applicationProperties.getTestFilePath().toString();
         }
-        ipService.parseFile(pathToFile);
+        System.out.format
+                (applicationProperties.getAppProps().getProperty("log.result"),
+                        ipService.parseFile(pathToFile));
     }
 }
